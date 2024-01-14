@@ -4,21 +4,26 @@ using System.Net;
 
 class Program
 {
-    static void Main()
+    static async Task Main()
     {
         Console.WriteLine("Welcome to distance checker!");
         
         Console.WriteLine("Enter the name of the first city :");
-        City firstCity = new(Console.ReadLine()!, 0 ,0);
+        City firstCity = await GetCoord(
+            new(Console.ReadLine()!, 0, 0)
+            );
+
         Console.WriteLine("Enter the name of the second city :");
-        City secondCity = new(Console.ReadLine()!, 0, 0);
+        City secondCity = await GetCoord(
+            new(Console.ReadLine()!, 0, 0)
+            );
 
 
-        var fReceived = GetCoord(firstCity);
-        var sReceived = GetCoord(secondCity);
+        double distance = CalculDistance(firstCity, secondCity);
 
-        Console.WriteLine(fReceived.Lat);
-        Console.WriteLine(sReceived.Lat);
+        Console.WriteLine($"The distance is {distance} km.");
+
+        return;
     }
 
     public async static Task<City> GetCoord(City city)
@@ -26,31 +31,39 @@ class Program
         string apiKey = "AIzaSyBGjuDVC0d9d93YINy6l1iXcvlQN4IMhfg";
         string apiUrl = $"https://maps.googleapis.com/maps/api/geocode/json?address={Uri.EscapeDataString(city.Name)}&key={apiKey}";
 
-        double lat = 0;
-        double lng = 0;
         
-        try
-        {
-            string jsonResult;
-            using (HttpClient client = new())
-            {
-                jsonResult = await client.GetStringAsync(apiUrl);
-            }
+        HttpClient client = new();
 
-            JObject resultObject = JObject.Parse(jsonResult);
-            JToken location = resultObject.SelectToken("results[0].geometry.location")!;
+        JObject resultObject = JObject.Parse(await client.GetStringAsync(apiUrl));
+        JToken location = resultObject.SelectToken("results[0].geometry.location")!;
 
-            lat = (double)location.SelectToken("lat")!;
-            lng = (double)location.SelectToken("lng")!;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-        }
+        double lat = (double)location.SelectToken("lat")!;
+        double lng = (double)location.SelectToken("lng")!;
+        
+        return new City(city.Name, lat, lng);
 
-        City iCity = new(city.Name, lat, lng);
+    }
 
-        return iCity;
+    public static double CalculDistance(City firstCity, City secondCity)
+    {
+        int R = 6371;
+
+        double dLat = Deg2Rad(secondCity.Lat - firstCity.Lat);
+        double dLon = Deg2Rad(secondCity.Lat - firstCity.Lat);
+        double a =
+            Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+            Math.Cos(Deg2Rad(firstCity.Lat)) * Math.Cos(Deg2Rad(secondCity.Lat)) *
+            Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+        double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        double d = R * c;
+
+        return d;
+    }
+
+    public static double Deg2Rad(double deg)
+    {
+        return deg * (Math.PI / 180);
     }
 }
 

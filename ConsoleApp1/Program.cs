@@ -35,7 +35,8 @@ class Program
         HttpClient client = new();
 
         JObject resultObject = JObject.Parse(await client.GetStringAsync(apiUrl));
-        JToken location = resultObject.SelectToken("results[0].geometry.location")!;
+        JToken location = resultObject.SelectToken("results[0].geometry.location")
+            ?? throw new Exception("Api did not passed.");
 
         double lat = (double)location.SelectToken("lat")!;
         double lng = (double)location.SelectToken("lng")!;
